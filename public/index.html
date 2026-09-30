@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>School E‑Voting</title><link rel="stylesheet" href="style.css"></head>
+<body>
+<header><div class="brand"><div class="logo">✓</div><div><strong id="school">School Election</strong><small>Secure Student Voting</small></div></div><button id="logout" class="ghost hidden">Logout</button></header>
+<main>
+<section id="loginView" class="card narrow"><span class="eyebrow">STUDENT PORTAL</span><h1>Cast your vote</h1><p class="muted">Use your school-issued student ID and password.</p>
+<form id="loginForm"><label>Student ID<input id="studentId" required autocomplete="username"></label><label>Password<input id="password" type="password" required autocomplete="current-password"></label><button class="primary">Sign in</button><p id="loginMsg" class="msg"></p></form>
+</section>
+<section id="ballotView" class="hidden"><div class="hero"><span class="eyebrow">YOUR BALLOT</span><h1>Make your choices carefully.</h1><p id="welcome"></p></div><div id="ballot"></div><button id="submitVote" class="primary wide">Review & submit ballot</button><p id="voteMsg" class="msg"></p></section>
+<section id="doneView" class="card narrow hidden"><div class="success">✓</div><h1>Vote submitted</h1><p>Your ballot has been recorded. You cannot submit another ballot with this account.</p></section>
+<section id="adminView" class="hidden"><div class="hero"><span class="eyebrow">ADMINISTRATION</span><h1>Election control center</h1><p>Manage the election, candidates and voters.</p></div><div id="stats" class="stats"></div><div class="adminGrid">
+<div class="card"><h2>Election controls</h2><label>School name<input id="schoolName"></label><div class="row"><button id="openBtn" class="primary">Open election</button><button id="closeBtn" class="secondary">Close election</button></div><div class="row"><button id="publishBtn" class="secondary">Publish results</button></div></div>
+<div class="card"><h2>Add position</h2><form id="positionForm"><label>Position<input id="positionName" placeholder="President" required></label><label>Maximum choices<input id="maxChoices" type="number" value="1" min="1" max="10"></label><button class="primary">Add position</button></form></div>
+<div class="card"><h2>Add candidate</h2><form id="candidateForm"><label>Candidate name<input id="candidateName" required></label><label>Position<select id="candidatePosition"></select></label><label>Short bio<textarea id="candidateBio"></textarea></label><label>Photo URL<input id="candidatePhoto"></label><button class="primary">Add candidate</button></form></div>
+<div class="card"><h2>Add voter</h2><form id="voterForm"><label>Student ID<input id="newStudent" required></label><label>Student name<input id="newName" required></label><label>Temporary password<input id="newPassword" minlength="6" required></label><button class="primary">Create voter</button></form></div>
+</div><div class="card"><h2>Recent audit activity</h2><div id="logs"></div></div></section>
+<section id="adminLoginView" class="card narrow hidden"><span class="eyebrow">ADMIN</span><h1>Administrator login</h1><form id="adminLoginForm"><label>Password<input id="adminPassword" type="password" required></label><button class="primary">Enter dashboard</button><p id="adminMsg" class="msg"></p></form></section>
+</main><footer>School E‑Voting • Built for private school elections</footer>
+<script src="app.js"></script></body></html>
