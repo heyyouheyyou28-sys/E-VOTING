@@ -1,12 +1,17 @@
 {
   "name": "school-evoting",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "scripts": {"start":"node server.js","dev":"node --watch server.js"},
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "node --env-file=.env --watch api/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "better-sqlite3":"^11.7.0",
-    "cookie-parser":"^1.4.7",
-    "express":"^4.21.2",
-    "express-rate-limit":"^7.5.0"
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
   }
 }
