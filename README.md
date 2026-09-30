@@ -16,3 +16,4 @@
 ## Election flow
 Create positions and candidates (election closed) -> add voters (single or bulk) -> open -> close -> publish results.
 The ballot locks once voting starts. Votes are stored anonymously.
+mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
