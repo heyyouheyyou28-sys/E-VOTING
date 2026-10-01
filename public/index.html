@@ -77,7 +77,13 @@ async function results(admin){
 
 // ---------- admin ----------
 function adminLogin(){
- const pw=el("input",{type:"password",placeholder:"Admin password"}),box=el("div");
+ const box=el("div");
+ if(cfg.needs_setup){
+  const nm=el("input",{placeholder:"School name (optional)"}),p1=el("input",{type:"password",placeholder:"Create admin password (10+ characters)"}),p2=el("input",{type:"password",placeholder:"Repeat password"});
+  const go=async()=>{if(p1.value!==p2.value)return box.replaceChildren(note("Passwords do not match"));try{await api("admin/setup","POST",{password:p1.value,school_name:nm.value});cfg.needs_setup=false;adminHome()}catch(e){box.replaceChildren(note(e.message))}};
+  return show(el("div",{class:"card"},el("h2",{},"Create your admin password"),el("p",{class:"mut"},"First-time setup. Choose a password only you know and keep it safe."),nm,p1,p2,box,el("button",{onclick:go},"Create password")));
+ }
+ const pw=el("input",{type:"password",placeholder:"Admin password"});
  const go=async()=>{try{await api("admin/login","POST",{password:pw.value});adminHome()}catch(e){box.replaceChildren(note(e.message))}};
  pw.addEventListener("keydown",e=>e.key==="Enter"&&go());
  show(el("div",{class:"card"},el("h2",{},"Admin login"),pw,box,el("button",{onclick:go},"Log in")));
@@ -103,6 +109,7 @@ async function adminHome(){
   el("div",{class:"card"},el("h2",{},"Add voter"),vId,vName,vPw,el("button",{onclick:()=>act(()=>api("admin/voter","POST",{student_id:vId.value,name:vName.value,password:vPw.value}),"Voter added")},"Add voter"),
    el("h3",{},"Bulk import"),bulk,el("button",{onclick:()=>{const voters=bulk.value.split("\n").map(l=>l.split(",").map(x=>x.trim())).filter(a=>a.length>=3).map(([student_id,name,...r])=>({student_id,name,password:r.join(",")}));act(async()=>{const r=await api("admin/voter","POST",{voters});alert(`Added ${r.added}. Skipped: ${r.skipped.join(", ")||"none"}`)})}},"Import")),
   el("div",{class:"card"},el("h2",{},"Reset a voter's password"),(()=>{const i=el("input",{placeholder:"Student ID"}),p=el("input",{placeholder:"New password"});return el("div",{},i,p,el("button",{onclick:()=>act(()=>api("admin/voter/reset","POST",{student_id:i.value,password:p.value}),"Password reset")},"Reset"))})()),
+  (()=>{const c=el("input",{type:"password",placeholder:"Current password"}),n=el("input",{type:"password",placeholder:"New password (10+ characters)"});return el("div",{class:"card"},el("h2",{},"Change admin password"),c,n,el("button",{onclick:()=>act(()=>api("admin/password","POST",{current:c.value,password:n.value}),"Password changed")},"Change"))})(),
   el("div",{class:"card"},el("h2",{},"Audit log"),d.logs.map(l=>el("div",{class:"row"},el("span",{},`${l.actor}: ${l.action}`),el("span",{class:"mut"},l.created_at))))
  );
 }

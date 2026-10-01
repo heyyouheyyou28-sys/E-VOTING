@@ -1,12 +1,11 @@
 const express=require("express"),cookieParser=require("cookie-parser"),crypto=require("crypto"),path=require("path");
 const {promisify}=require("util"),scrypt=promisify(crypto.scrypt);
 const pg=require("pg");pg.types.setTypeParser(20,Number);
-const {ADMIN_PASSWORD,SESSION_SECRET}=process.env;
+const ENV_ADMIN=process.env.ADMIN_PASSWORD||"";   // optional override; normally the password is created in the browser
+let SECRET=(process.env.SESSION_SECRET||"").length>=32?process.env.SESSION_SECRET:null; // otherwise generated and stored in the database
 const DB_URL=(process.env.DATABASE_URL||process.env.POSTGRES_URL||"").trim();
 let CONFIG_ERR=null;
-if(!ADMIN_PASSWORD) CONFIG_ERR="ADMIN_PASSWORD is not reaching the app. Environment: "+process.env.VERCEL_ENV+". Variables seen: "+Object.keys(process.env).filter(k=>/ADMIN|SESSION|SCHOOL|DATABASE|POSTGRES|PASS/i.test(k)).join(", ");
-else if(!SESSION_SECRET) CONFIG_ERR="SESSION_SECRET is not reaching the app.";
-else if(SESSION_SECRET.length<32) CONFIG_ERR="SESSION_SECRET is too short: "+SESSION_SECRET.length+" characters.";
+if(!DB_URL) CONFIG_ERR="DATABASE_URL is missing. In Vercel open the Storage tab, create a Neon database and connect it to this project, then redeploy.";
 const SECURE=process.env.NODE_ENV==="production"||!!process.env.VERCEL;
 const pool=CONFIG_ERR?null:new pg.Pool({connectionString:DB_URL,max:3,idleTimeoutMillis:10000,ssl:/localhost|127\.0\.0\.1/.test(DB_URL)?false:{rejectUnauthorized:false}});
 const toPg=t=>{let i=0;return t.replace(/\?/g,()=>"$"+(++i))};
@@ -30,6 +29,7 @@ const ready=CONFIG_ERR?Promise.resolve():(async()=>{
   await c.query("BEGIN");await c.query("SELECT pg_advisory_xact_lock(7342)");
   for(const t of SCHEMA)await c.query(t);
   await c.query("INSERT INTO settings VALUES('school_name',$1) ON CONFLICT DO NOTHING",[process.env.SCHOOL_NAME||"School Election"]);
+  if(!SECRET){await c.query("INSERT INTO settings VALUES('session_secret',$1) ON CONFLICT DO NOTHING",[crypto.randomBytes(32).toString("hex")]);SECRET=(await c.query("SELECT value FROM settings WHERE key='session_secret'")).rows[0].value}
   await c.query("COMMIT");
  }catch(e){await c.query("ROLLBACK").catch(()=>{});throw e}finally{c.release()}
 })();
@@ -44,7 +44,7 @@ async function hashPw(p){const s=crypto.randomBytes(16).toString("hex");return s
 async function checkPw(p,stored){const [s,h]=stored.split(":");if(!h)return false;return crypto.timingSafeEqual(await scrypt(p,s,64),Buffer.from(h,"hex"))}
 const sha=x=>crypto.createHash("sha256").update(x).digest();
 const safeEq=(a,b)=>crypto.timingSafeEqual(sha(a),sha(b));
-const mac=v=>crypto.createHmac("sha256",SESSION_SECRET).update(v).digest("hex");
+const mac=v=>crypto.createHmac("sha256",SECRET).update(v).digest("hex");
 const sign=(kind,id,ttl=8*3600e3)=>{const v=`${kind}:${id}:${Date.now()+ttl}`;return v+"."+mac(v)};
 function verify(tok,kind){
  const i=String(tok||"").lastIndexOf(".");if(i<0)return null;
@@ -82,7 +82,7 @@ const voterOf=async req=>{const id=verify(req.cookies.voter_session,"voter");ret
 const pct=(a,b)=>b?Math.round(a*1000/b)/10:0;
 
 // ---- public ----
-app.get("/api/config",h(async(req,res)=>res.json({school_name:await getS("school_name"),election_open:await getS("election_open")==="1",results_published:await getS("results_published")==="1"})));
+app.get("/api/config",h(async(req,res)=>res.json({needs_setup:!ENV_ADMIN&&!await getS("admin_hash"),school_name:await getS("school_name"),election_open:await getS("election_open")==="1",results_published:await getS("results_published")==="1"})));
 
 app.post("/api/login",h(async(req,res)=>{
  const sid=String(req.body?.student_id||"").trim().slice(0,64),k="v:"+req.ip+":"+sid;
@@ -148,8 +148,26 @@ app.get("/api/results",h(async(req,res)=>{
 app.post("/api/admin/login",h(async(req,res)=>{
  const k="a:"+req.ip;
  if(await blocked(k))return res.status(429).json({error:"Too many attempts. Try again in 15 minutes."});
- if(!safeEq(String(req.body?.password||""),ADMIN_PASSWORD)){await fail(k);return res.status(401).json({error:"Invalid admin password"})}
+ const pwd=String(req.body?.password||""),ah=await getS("admin_hash");
+ if(!ENV_ADMIN&&!ah)return res.status(409).json({error:"Admin password not created yet. Reload the page to create it."});
+ const okA=ENV_ADMIN?safeEq(pwd,ENV_ADMIN):await checkPw(pwd,ah);
+ if(!okA){await fail(k);return res.status(401).json({error:"Invalid admin password"})}
  await clear(k);res.cookie("admin_session",sign("admin",1),cookieOpts);await audit("admin","Admin login");res.json({ok:true});
+}));
+app.post("/api/admin/setup",h(async(req,res)=>{
+ const pw=String(req.body?.password||"");
+ if(ENV_ADMIN||await getS("admin_hash"))return res.status(409).json({error:"Admin password already created"});
+ if(pw.length<10)return res.status(400).json({error:"Use at least 10 characters"});
+ const r=await q("INSERT INTO settings VALUES('admin_hash',?) ON CONFLICT DO NOTHING RETURNING key",[await hashPw(pw)]);
+ if(!r.length)return res.status(409).json({error:"Admin password already created"});
+ const nm=String(req.body?.school_name||"").trim().slice(0,120);if(nm)await setS("school_name",nm);
+ res.cookie("admin_session",sign("admin",1),cookieOpts);await audit("admin","Admin password created");res.json({ok:true});
+}));
+app.post("/api/admin/password",adminOnly,h(async(req,res)=>{
+ if(ENV_ADMIN)return res.status(400).json({error:"The password is set in Vercel settings"});
+ if(!await checkPw(String(req.body?.current||""),await getS("admin_hash")))return res.status(401).json({error:"Current password is wrong"});
+ const pw=String(req.body?.password||"");if(pw.length<10)return res.status(400).json({error:"Use at least 10 characters"});
+ await setS("admin_hash",await hashPw(pw));await audit("admin","Admin password changed");res.json({ok:true});
 }));
 app.get("/api/admin/summary",adminOnly,h(async(req,res)=>{
  const c=async t=>(await one(`SELECT COUNT(*) n FROM ${t}`)).n;

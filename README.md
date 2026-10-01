@@ -8,10 +8,9 @@
 5. Students: http://localhost:3000/  |  Admin: http://localhost:3000/?admin=1
 
 ## Deploy on Vercel
-1. Push this folder to a private GitHub repo (`.env` is git-ignored) and import it at vercel.com/new.
-2. In the project, open **Storage -> Create Database -> Neon (Postgres)** and connect it. Vercel adds `DATABASE_URL` automatically.
-3. In **Settings -> Environment Variables** add: ADMIN_PASSWORD, SESSION_SECRET (32+ chars), SCHOOL_NAME.
-4. **Deployments -> Redeploy**, then open `/api/config` to confirm it works.
+1. Push this folder to GitHub and import it at vercel.com/new.
+2. Storage -> Create Database -> Neon, connect it (adds DATABASE_URL).
+3. Redeploy, open `/?admin=1` and create your admin password on first visit (do this immediately).
 
 ## Election flow
 Create positions and candidates (election closed) -> add voters (single or bulk) -> open -> close -> publish results.
