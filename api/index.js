@@ -4,7 +4,7 @@ const pg=require("pg");pg.types.setTypeParser(20,Number);
 const {ADMIN_PASSWORD,SESSION_SECRET}=process.env;
 const DB_URL=(process.env.DATABASE_URL||process.env.POSTGRES_URL||"").trim();
 let CONFIG_ERR=null;
-if(!ADMIN_PASSWORD) CONFIG_ERR="ADMIN_PASSWORD is not reaching the app.";
+if(!ADMIN_PASSWORD) CONFIG_ERR="ADMIN_PASSWORD is not reaching the app. Environment: "+process.env.VERCEL_ENV+". Variables seen: "+Object.keys(process.env).filter(k=>/ADMIN|SESSION|SCHOOL|DATABASE|POSTGRES|PASS/i.test(k)).join(", ");
 else if(!SESSION_SECRET) CONFIG_ERR="SESSION_SECRET is not reaching the app.";
 else if(SESSION_SECRET.length<32) CONFIG_ERR="SESSION_SECRET is too short: "+SESSION_SECRET.length+" characters.";
 const SECURE=process.env.NODE_ENV==="production"||!!process.env.VERCEL;
